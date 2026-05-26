@@ -1,0 +1,66 @@
+appId: com.qingying.zhishai.app
+productName: 青影智筛
+copyright: Copyright © 2026 Qingying Smart Screen
+
+directories:
+  output: release
+  buildResources: resources
+
+files:
+  - dist-electron/**/*
+  - frontend/dist/**/*
+  - package.json
+
+extraResources:
+  - from: resources/icons
+    to: icons
+    filter:
+      - "**/*"
+
+asar: true
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dir
+  icon: resources/icons/icon.icns
+  extraResources:
+    - from: resources/backend/mac
+      to: backend
+      filter:
+        - "qingying-backend-runtime/**/*"
+    - from: resources/icons
+      to: icons
+      filter:
+        - "**/*"
+
+dmg:
+  artifactName: "青影智筛.dmg"
+  title: "青影智筛"
+  contents:
+    - x: 150
+      y: 180
+      type: file
+    - x: 430
+      y: 180
+      type: link
+      path: /Applications
+
+win:
+  target:
+    - target: portable
+      arch:
+        - x64
+  icon: resources/icons/icon.ico
+  extraResources:
+    - from: resources/backend/win
+      to: backend
+      filter:
+        - "qingying-backend-runtime/**/*"
+    - from: resources/icons
+      to: icons
+      filter:
+        - "**/*"
+
+portable:
+  artifactName: "${productName}-${version}-win-${arch}.${ext}"

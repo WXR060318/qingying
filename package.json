@@ -1,0 +1,32 @@
+{
+  "name": "qingying-smart-screen",
+  "version": "0.3.0",
+  "private": true,
+  "description": "青影智筛桌面端应用",
+  "main": "dist-electron/main.js",
+  "author": "Qingying Smart Screen",
+  "scripts": {
+    "dev": "npm run build:electron && concurrently \"npm run dev:renderer\" \"wait-on http://127.0.0.1:5173 && cross-env NODE_ENV=development electron .\"",
+    "dev:renderer": "npm --prefix frontend run dev:renderer",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "build:renderer": "npm --prefix frontend run build:renderer",
+    "build": "npm run build:electron && npm run build:renderer",
+    "build:backend:mac": "sh scripts/build-backend-mac.sh",
+    "package:mac": "sh scripts/package-mac.sh",
+    "dmg": "sh scripts/package-dmg.sh",
+    "dist:mac": "npm run package:mac && npm run dmg",
+    "package:win": "scripts\\package-win.bat"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^29.1.6",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.4.5",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "extends": "./electron-builder.yml"
+  }
+}

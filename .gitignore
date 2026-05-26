@@ -1,0 +1,28 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Backend runtime data
+backend/app/storage/qingying.db
+backend/app/storage/thumbnails/
+backend/app/storage/exports/
+resources/backend/qingying-backend*
+resources/backend/mac/qingying-backend-runtime/
+resources/backend/win/qingying-backend-runtime/
+
+# Node / Electron
+node_modules/
+dist-electron/
+backendManager.js
+release/
+build/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-main/
+frontend/.vite/
+
+# Logs and OS files
+*.log
+.DS_Store
