@@ -229,6 +229,8 @@ release\青影智筛 V1.2-win-x64.exe
 scripts\build-backend-win.bat
 ```
 
+详细说明见 [docs/windows-package.md](docs/windows-package.md)。
+
 ## 验证打包结果
 
 macOS：
