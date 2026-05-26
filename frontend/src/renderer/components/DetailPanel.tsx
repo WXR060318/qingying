@@ -84,7 +84,7 @@ export function DetailPanel({ photo, onStatusChange, onUpdate, onPreview }: Deta
             onClick={() => onPreview(photo)}
             title="大图预览"
           >
-            <img className="h-full w-full object-contain" src={api.thumbnailUrl(photo.id)} alt={photo.file_name} />
+            <img className="h-full w-full object-contain" src={api.thumbnailUrl(photo)} alt={photo.file_name} />
             <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-white/95 px-2 py-1 text-xs font-medium text-slate-700">
               <Eye size={13} />
               预览

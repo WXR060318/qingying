@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -66,8 +67,25 @@ def read_basic_metadata(file_path: str) -> dict[str, Any]:
     }
 
 
-def create_thumbnail(file_path: str, thumbnail_path: Path, max_side: int = 400) -> str | None:
-    if thumbnail_path.exists():
+def thumbnail_cache_path(storage_dir: Path, project_id: int, photo_id: int, file_path: str) -> Path:
+    """Build a project-scoped thumbnail path that changes when the source file changes."""
+    path = Path(file_path)
+    try:
+        stat = path.stat()
+        fingerprint_source = f"{path.resolve()}|{stat.st_size}|{stat.st_mtime_ns}"
+    except Exception:
+        fingerprint_source = str(path)
+    fingerprint = hashlib.sha1(fingerprint_source.encode("utf-8")).hexdigest()[:16]
+    return storage_dir / "thumbnails" / f"project_{project_id}" / f"photo_{photo_id}_{fingerprint}.jpg"
+
+
+def create_thumbnail(
+    file_path: str,
+    thumbnail_path: Path,
+    max_side: int = 400,
+    force: bool = False,
+) -> str | None:
+    if thumbnail_path.exists() and not force:
         return str(thumbnail_path)
     thumbnail_path.parent.mkdir(parents=True, exist_ok=True)
     try:

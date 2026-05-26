@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import { AnalysisPanel } from "../components/AnalysisPanel";
 import { DashboardPanel } from "../components/DashboardPanel";
@@ -84,6 +84,7 @@ export function WorkspacePage() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [activeOperation, setActiveOperation] = useState<ActiveOperation | null>(null);
   const [operationProgress, setOperationProgress] = useState<TaskProgress | null>(null);
+  const selectedProjectIdRef = useRef<number | null>(null);
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
@@ -105,10 +106,16 @@ export function WorkspacePage() {
       setProjects(data);
       setSelectedProjectId((current) => {
         if (preferredProjectId && data.some((project) => project.id === preferredProjectId)) {
+          selectedProjectIdRef.current = preferredProjectId;
           return preferredProjectId;
         }
-        if (current && data.some((project) => project.id === current)) return current;
-        return data[0]?.id ?? null;
+        if (current && data.some((project) => project.id === current)) {
+          selectedProjectIdRef.current = current;
+          return current;
+        }
+        const nextProjectId = data[0]?.id ?? null;
+        selectedProjectIdRef.current = nextProjectId;
+        return nextProjectId;
       });
     } catch (error) {
       showError(error);
@@ -117,37 +124,56 @@ export function WorkspacePage() {
     }
   }, []);
 
-  const loadPhotos = useCallback(async () => {
-    if (!selectedProjectId) return;
-    setBusy((current) => current ?? "photos");
+  const refreshCurrentProjectImages = useCallback(async (
+    projectId = selectedProjectIdRef.current,
+    options: { preserveSelection?: boolean; showBusy?: boolean } = {},
+  ) => {
+    if (!projectId) {
+      setPhotos([]);
+      setSelectedPhotoId(null);
+      setPreviewPhotoId(null);
+      return;
+    }
+    const preserveSelection = options.preserveSelection ?? true;
+    const showBusy = options.showBusy ?? true;
+    if (showBusy) setBusy((current) => current ?? "photos");
     try {
-      const data = await api.listPhotos(selectedProjectId, {
+      const data = await api.listPhotos(projectId, {
         status: statusFilter,
         category: categoryFilter,
         issue_tag: issueTagFilter,
         search,
         sort,
       });
+      if (selectedProjectIdRef.current !== projectId) return;
       setPhotos(data);
       setSelectedPhotoId((current) => {
-        if (current && data.some((photo) => photo.id === current)) return current;
+        if (preserveSelection && current && data.some((photo) => photo.id === current)) return current;
         return data[0]?.id ?? null;
+      });
+      setPreviewPhotoId((current) => {
+        if (current && data.some((photo) => photo.id === current)) return current;
+        return null;
       });
     } catch (error) {
       showError(error);
     } finally {
-      setBusy((current) => (current === "photos" ? null : current));
+      if (showBusy) setBusy((current) => (current === "photos" ? null : current));
     }
-  }, [categoryFilter, issueTagFilter, search, selectedProjectId, sort, statusFilter]);
+  }, [categoryFilter, issueTagFilter, search, sort, statusFilter]);
 
-  const loadSimilarGroups = useCallback(async () => {
-    if (!selectedProjectId) return;
+  const loadSimilarGroups = useCallback(async (projectId = selectedProjectIdRef.current) => {
+    if (!projectId) {
+      setSimilarGroups([]);
+      return;
+    }
     try {
-      setSimilarGroups(await api.listSimilarGroups(selectedProjectId));
+      const data = await api.listSimilarGroups(projectId);
+      if (selectedProjectIdRef.current === projectId) setSimilarGroups(data);
     } catch (error) {
       showError(error);
     }
-  }, [selectedProjectId]);
+  }, []);
 
   const loadSettings = useCallback(async () => {
     try {
@@ -158,8 +184,10 @@ export function WorkspacePage() {
   }, []);
 
   useEffect(() => {
-    void loadProjects();
-    void loadSettings();
+    if (!window.qingying?.getBackendStatus) {
+      void loadProjects();
+      void loadSettings();
+    }
   }, [loadProjects, loadSettings]);
 
   useEffect(() => {
@@ -168,6 +196,7 @@ export function WorkspacePage() {
       try {
         if (window.qingying?.getBackendStatus) {
           const status = await window.qingying.getBackendStatus();
+          api.setBackendUrl(status.url);
           if (active) setBackendStatus(status);
           return;
         }
@@ -202,7 +231,10 @@ export function WorkspacePage() {
         }
       }
     })();
-    const unsubscribe = window.qingying?.onBackendStatus?.((status) => setBackendStatus(status));
+    const unsubscribe = window.qingying?.onBackendStatus?.((status) => {
+      api.setBackendUrl(status.url);
+      setBackendStatus(status);
+    });
     return () => {
       active = false;
       unsubscribe?.();
@@ -210,14 +242,48 @@ export function WorkspacePage() {
   }, []);
 
   useEffect(() => {
+    if (backendStatus?.url) api.setBackendUrl(backendStatus.url);
+    if (backendStatus?.phase === "ready") {
+      void loadProjects(selectedProjectIdRef.current);
+      void loadSettings();
+    }
+  }, [backendStatus?.phase, backendStatus?.url, loadProjects, loadSettings]);
+
+  useEffect(() => {
+    selectedProjectIdRef.current = selectedProjectId;
     if (!selectedProjectId) {
-      setPhotos([]);
-      setSelectedPhotoId(null);
+      resetProjectScopedState();
       return;
     }
-    void loadPhotos();
-    void loadSimilarGroups();
-  }, [loadPhotos, loadSimilarGroups, selectedProjectId]);
+    resetProjectScopedState();
+    void refreshCurrentProjectImages(selectedProjectId, { preserveSelection: false });
+    void loadSimilarGroups(selectedProjectId);
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (!selectedProjectId) return;
+    void refreshCurrentProjectImages(selectedProjectId);
+  }, [categoryFilter, issueTagFilter, search, sort, statusFilter]);
+
+  useEffect(() => {
+    if (view !== "review" || !selectedProjectId) return;
+    void refreshCurrentProjectImages(selectedProjectId);
+  }, [selectedProjectId, view]);
+
+  function resetProjectScopedState() {
+    setPhotos([]);
+    setSelectedPhotoId(null);
+    setPreviewPhotoId(null);
+    setSimilarGroups([]);
+    setLastScan(null);
+    setLastExport(null);
+  }
+
+  function handleSelectProject(projectId: number) {
+    if (selectedProjectIdRef.current === projectId) return;
+    selectedProjectIdRef.current = projectId;
+    setSelectedProjectId(projectId);
+  }
 
   useEffect(() => {
     if (!selectedProjectId || !activeOperation) return;
@@ -283,13 +349,19 @@ export function WorkspacePage() {
   async function handleCreateProject(payload: ProjectCreatePayload) {
     try {
       const created = await api.createProject(payload);
+      selectedProjectIdRef.current = created.id;
+      setSelectedProjectId(created.id);
+      resetProjectScopedState();
       setNotice({ type: "success", message: "项目已创建" });
       await loadProjects(created.id);
       if (payload.source_path) {
         beginOperation("scan", "导入照片", "正在扫描照片文件夹");
         setLastScan(await api.scanPhotos(created.id, payload.source_path));
         await loadProjects(created.id);
+        await refreshCurrentProjectImages(created.id, { preserveSelection: false });
         finishOperation("照片导入完成");
+      } else {
+        await refreshCurrentProjectImages(created.id, { preserveSelection: false });
       }
     } catch (error) {
       showError(error);
@@ -324,7 +396,7 @@ export function WorkspacePage() {
         message: `扫描完成：新增 ${result.imported_count} 张，更新 ${result.updated_count} 张，失败 ${result.failed_count} 张`,
       });
       await loadProjects(selectedProjectId);
-      await loadPhotos();
+      await refreshCurrentProjectImages(selectedProjectId, { preserveSelection: false });
       finishOperation("照片导入完成");
     } catch (error) {
       showError(error);
@@ -344,7 +416,7 @@ export function WorkspacePage() {
         type: "success",
         message: `本地分析完成：${result.analyzed_count} 张，失败 ${result.failed_count} 张`,
       });
-      await loadPhotos();
+      await refreshCurrentProjectImages(selectedProjectId);
       finishOperation("本地分析完成");
     } catch (error) {
       showError(error);
@@ -366,7 +438,7 @@ export function WorkspacePage() {
           ? `大模型不可用或未启用，已降级。本次成功 ${result.analyzed_count} 张`
           : `大模型分析完成：${result.analyzed_count} 张`,
       });
-      await loadPhotos();
+      await refreshCurrentProjectImages(selectedProjectId);
       finishOperation(result.fallback_to_local ? "大模型已降级处理" : "大模型分析完成");
     } catch (error) {
       showError(error);
@@ -386,8 +458,8 @@ export function WorkspacePage() {
         type: "success",
         message: `相似聚类完成：${result.group_count} 组，${result.grouped_photo_count} 张`,
       });
-      await loadPhotos();
-      await loadSimilarGroups();
+      await refreshCurrentProjectImages(selectedProjectId);
+      await loadSimilarGroups(selectedProjectId);
       setView("similar");
       finishOperation("相似聚类完成");
     } catch (error) {
@@ -404,6 +476,9 @@ export function WorkspacePage() {
     try {
       const updated = await api.updatePhotoStatus(photoId, status);
       replacePhoto(updated);
+      await refreshCurrentProjectImages(updated.project_id);
+      await loadSimilarGroups(updated.project_id);
+      await loadProjects(updated.project_id);
       setNotice({ type: "success", message: "状态已保存" });
       finishOperation("状态已保存");
     } catch (error) {
@@ -420,6 +495,9 @@ export function WorkspacePage() {
     try {
       const updated = await api.updatePhoto(photoId, payload);
       replacePhoto(updated);
+      await refreshCurrentProjectImages(updated.project_id);
+      await loadSimilarGroups(updated.project_id);
+      await loadProjects(updated.project_id);
       setNotice({ type: "success", message: "复核信息已保存" });
       finishOperation("复核信息已保存");
     } catch (error) {
@@ -433,9 +511,9 @@ export function WorkspacePage() {
   async function handleSetRecommended(groupId: number, photoId: number) {
     beginOperation("status", "保存相似组推荐图", "正在保存相似组推荐图");
     try {
-      await api.updateRecommendedPhoto(groupId, photoId);
-      await loadSimilarGroups();
-      await loadPhotos();
+      const group = await api.updateRecommendedPhoto(groupId, photoId);
+      await loadSimilarGroups(group.project_id);
+      await refreshCurrentProjectImages(group.project_id);
       finishOperation("推荐图已保存");
     } catch (error) {
       showError(error);
@@ -444,12 +522,13 @@ export function WorkspacePage() {
   }
 
   async function handleApplyRecommendation(groupId: number) {
+    if (!selectedProjectId) return;
     beginOperation("status", "处理相似组", "正在应用相似组推荐");
     try {
       const result = await api.applySimilarGroupRecommendation(groupId);
       setNotice({ type: "success", message: `已处理 ${result.updated_count} 张相似照片` });
-      await loadPhotos();
-      await loadSimilarGroups();
+      await refreshCurrentProjectImages(selectedProjectId);
+      await loadSimilarGroups(selectedProjectId);
       finishOperation("相似组处理完成");
     } catch (error) {
       showError(error);
@@ -477,12 +556,14 @@ export function WorkspacePage() {
     setBusy("export");
     beginOperation("export", "导出结果", "正在准备导出结果");
     try {
+      await refreshCurrentProjectImages(selectedProjectId, { showBusy: false });
       const result = await api.exportProject(selectedProjectId, {
         export_dir: exportDir,
         export_range: exportRange,
         include_excel: includeExcel,
       });
       setLastExport(result);
+      await loadProjects(selectedProjectId);
       setNotice({ type: "success", message: `导出完成：复制 ${result.copied_count} 张` });
       finishOperation("导出完成");
     } catch (error) {
@@ -522,7 +603,7 @@ export function WorkspacePage() {
       <ProjectSidebar
         projects={projects}
         selectedProjectId={selectedProjectId}
-        onSelect={setSelectedProjectId}
+        onSelect={handleSelectProject}
         onCreate={handleCreateProject}
         onDelete={handleDeleteProject}
       />
@@ -540,8 +621,8 @@ export function WorkspacePage() {
           onRefresh={() => {
             if (selectedProjectId) {
               void loadProjects(selectedProjectId);
-              void loadPhotos();
-              void loadSimilarGroups();
+              void refreshCurrentProjectImages(selectedProjectId);
+              void loadSimilarGroups(selectedProjectId);
               void loadSettings();
             }
           }}
@@ -707,10 +788,10 @@ function SummaryBar({ photos }: { photos: PhotoRecord[] }) {
         总照片 <span className="text-teal-700">{photos.length}</span> · 已分析 {analyzedCount}
       </div>
       <div className="flex items-center gap-4 text-xs text-slate-500">
-        <span>保留 {keepCount}</span>
+        <span>已入选 {keepCount}</span>
         <span>备选 {candidateCount}</span>
-        <span>淘汰 {rejectCount}</span>
-        <span>待确认 {pendingCount}</span>
+        <span>已淘汰 {rejectCount}</span>
+        <span>待人工复核 {pendingCount}</span>
         <span>相似组 {similarCount}</span>
       </div>
     </div>

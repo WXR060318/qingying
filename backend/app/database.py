@@ -103,3 +103,21 @@ def _run_lightweight_migrations() -> None:
                         """
                     )
                 )
+
+        if "photos" in table_names:
+            connection.execute(
+                text(
+                    """
+                    UPDATE photos
+                    SET status = CASE
+                        WHEN status IN ('keep', 'accepted', 'selected', '已入选', '保留') THEN 'keep'
+                        WHEN status IN ('candidate', '备选') THEN 'candidate'
+                        WHEN status IN ('reject', 'rejected', '已淘汰', '淘汰') THEN 'reject'
+                        WHEN status IN ('pending', 'review', 'pending_review', '待人工复核', '待确认', '待人工确认') THEN 'pending'
+                        ELSE 'pending'
+                    END
+                    WHERE status IS NULL
+                       OR status NOT IN ('keep', 'candidate', 'reject', 'pending')
+                    """
+                )
+            )

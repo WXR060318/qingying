@@ -52,7 +52,7 @@ export function ImageGrid({
             <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
               <img
                 className="h-full w-full object-cover"
-                src={api.thumbnailUrl(photo.id)}
+                src={api.thumbnailUrl(photo)}
                 alt={photo.file_name}
                 loading="lazy"
               />
@@ -107,7 +107,7 @@ export function ImageGrid({
               </div>
               <div className="mt-3 grid grid-cols-4 gap-2">
                 <SmallAction
-                  title="保留"
+                  title="已入选"
                   active={photo.status === "keep"}
                   onClick={(event) => {
                     event.stopPropagation();
@@ -127,7 +127,7 @@ export function ImageGrid({
                   <Star size={15} />
                 </SmallAction>
                 <SmallAction
-                  title="淘汰"
+                  title="已淘汰"
                   active={photo.status === "reject"}
                   onClick={(event) => {
                     event.stopPropagation();
@@ -137,7 +137,7 @@ export function ImageGrid({
                   <X size={15} />
                 </SmallAction>
                 <SmallAction
-                  title="待确认"
+                  title="待人工复核"
                   active={photo.status === "pending"}
                   onClick={(event) => {
                     event.stopPropagation();

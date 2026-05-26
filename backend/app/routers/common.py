@@ -62,7 +62,7 @@ def serialize_photo(db: Session, photo: Photo) -> dict[str, Any]:
     )
     issue_tags = decode_tags(photo.issue_tags)
     ai_out = serialize_ai_analysis(latest_ai) if latest_ai else None
-    status = photo.status or "pending"
+    status = _normalized_photo_status(photo.status)
     exposure_status = _exposure_status_from_tags(issue_tags)
     resolution_status = "low" if "分辨率低" in issue_tags else "normal"
     return PhotoOut(
@@ -181,6 +181,28 @@ def _legacy_manual_status(status_value: str) -> str:
         "reject": "rejected",
         "pending": "pending",
     }.get(status_value, "pending")
+
+
+def _normalized_photo_status(status_value: str | None) -> str:
+    return {
+        "keep": "keep",
+        "accepted": "keep",
+        "selected": "keep",
+        "已入选": "keep",
+        "保留": "keep",
+        "candidate": "candidate",
+        "备选": "candidate",
+        "reject": "reject",
+        "rejected": "reject",
+        "已淘汰": "reject",
+        "淘汰": "reject",
+        "pending": "pending",
+        "review": "pending",
+        "pending_review": "pending",
+        "待人工复核": "pending",
+        "待确认": "pending",
+        "待人工确认": "pending",
+    }.get(status_value or "", "pending")
 
 
 def _exposure_status_from_tags(tags: list[str]) -> str:

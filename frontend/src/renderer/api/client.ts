@@ -21,28 +21,77 @@ const FALLBACK_API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0
 
 let backendUrlPromise: Promise<string> | null = null;
 
-async function getApiBaseUrl() {
+function normalizeBaseUrl(url: string) {
+  return url.replace(/\/$/, "");
+}
+
+function setCachedBackendUrl(url: string) {
+  const normalized = normalizeBaseUrl(url);
+  window.__QINGYING_BACKEND_URL__ = normalized;
+  backendUrlPromise = Promise.resolve(normalized);
+}
+
+async function getApiBaseUrl(refresh = false) {
+  if (refresh) backendUrlPromise = null;
   if (!backendUrlPromise) {
-    backendUrlPromise = window.qingying?.getBackendUrl?.().catch(() => FALLBACK_API_BASE_URL)
-      ?? Promise.resolve(FALLBACK_API_BASE_URL);
+    backendUrlPromise = (
+      window.qingying?.getBackendUrl?.().then(normalizeBaseUrl).catch(() => FALLBACK_API_BASE_URL)
+      ?? Promise.resolve(FALLBACK_API_BASE_URL)
+    ).then((url) => {
+      window.__QINGYING_BACKEND_URL__ = url;
+      return url;
+    });
   }
   return backendUrlPromise;
 }
 
+function delay(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function retryDelay(attempt: number) {
+  return [300, 700, 1200, 1800][attempt] ?? 2200;
+}
+
+function isRetryableStatus(status: number) {
+  return status === 502 || status === 503 || status === 504;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const apiBaseUrl = await getApiBaseUrl();
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-    ...init,
-  });
-  const payload = (await response.json().catch(() => null)) as ApiResponse<T> | null;
-  if (!response.ok || !payload?.success) {
-    throw new Error(payload?.message || `请求失败：HTTP ${response.status}`);
+  const maxAttempts = init?.method && init.method !== "GET" ? 2 : 5;
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      const apiBaseUrl = await getApiBaseUrl(attempt > 0);
+      const response = await fetch(`${apiBaseUrl}${path}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(init?.headers ?? {}),
+        },
+        ...init,
+      });
+      const payload = (await response.json().catch(() => null)) as ApiResponse<T> | null;
+      if (!response.ok || !payload?.success) {
+        const error = new Error(payload?.message || `请求失败：HTTP ${response.status}`);
+        (error as Error & { retryable?: boolean }).retryable = isRetryableStatus(response.status);
+        if (attempt < maxAttempts - 1 && isRetryableStatus(response.status)) {
+          lastError = error;
+          await delay(retryDelay(attempt));
+          continue;
+        }
+        throw error;
+      }
+      return payload.data;
+    } catch (error) {
+      lastError = error;
+      if ((error as Error & { retryable?: boolean }).retryable === false) break;
+      if (attempt >= maxAttempts - 1) break;
+      await delay(retryDelay(attempt));
+    }
   }
-  return payload.data;
+
+  throw lastError instanceof Error ? lastError : new Error("请求失败，请稍后重试");
 }
 
 export interface PhotoListQuery {
@@ -63,6 +112,7 @@ function queryString(query?: PhotoListQuery) {
 }
 
 export const api = {
+  setBackendUrl: setCachedBackendUrl,
   health: () => request<{ status: string }>("/health"),
   listProjects: () => request<Project[]>("/api/projects"),
   createProject: (payload: ProjectCreatePayload) =>
@@ -142,12 +192,24 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ values }),
     }),
-  thumbnailUrl: (photoId: number) =>
-    `${window.__QINGYING_BACKEND_URL__ ?? FALLBACK_API_BASE_URL}/api/photos/${photoId}/thumbnail`,
-  photoFileUrl: (photoId: number) =>
-    `${window.__QINGYING_BACKEND_URL__ ?? FALLBACK_API_BASE_URL}/api/photos/${photoId}/file`,
+  thumbnailUrl: (photo: Pick<PhotoRecord, "id" | "project_id" | "updated_at"> | number) =>
+    assetUrl(photo, "thumbnail"),
+  photoFileUrl: (photo: Pick<PhotoRecord, "id" | "project_id" | "updated_at"> | number) =>
+    assetUrl(photo, "file"),
 };
 
 void getApiBaseUrl().then((url) => {
   window.__QINGYING_BACKEND_URL__ = url;
 });
+
+function assetUrl(
+  photo: Pick<PhotoRecord, "id" | "project_id" | "updated_at"> | number,
+  kind: "thumbnail" | "file",
+) {
+  const baseUrl = window.__QINGYING_BACKEND_URL__ ?? FALLBACK_API_BASE_URL;
+  if (typeof photo === "number") {
+    return `${baseUrl}/api/photos/${photo}/${kind}?v=${photo}`;
+  }
+  const version = encodeURIComponent(photo.updated_at || `${photo.project_id}-${photo.id}`);
+  return `${baseUrl}/api/projects/${photo.project_id}/photos/${photo.id}/${kind}?v=${version}`;
+}

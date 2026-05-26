@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -140,11 +141,13 @@ def apply_group_recommendation(group_id: int, db: Session = Depends(get_db)):
     if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="相似组不存在")
     updated = 0
+    now = datetime.utcnow()
     for item in group.photos:
         if item.photo_id == group.recommended_photo_id:
             item.photo.status = "keep"
         elif item.photo.status == "pending":
             item.photo.status = "candidate"
+        item.photo.updated_at = now
         updated += 1
     db.commit()
     return ok({"group_id": group_id, "updated_count": updated}, "已按推荐图处理相似组")
@@ -156,14 +159,16 @@ def reject_group_non_recommended(group_id: int, db: Session = Depends(get_db)):
     if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="相似组不存在")
     updated = 0
+    now = datetime.utcnow()
     for item in group.photos:
         if item.photo_id == group.recommended_photo_id:
             item.photo.status = "keep"
         else:
             item.photo.status = "reject"
+        item.photo.updated_at = now
         updated += 1
     db.commit()
-    return ok({"group_id": group_id, "updated_count": updated}, "已保留推荐图并淘汰其余相似照片")
+    return ok({"group_id": group_id, "updated_count": updated}, "已入选推荐图并淘汰其余相似照片")
 
 
 def _serialize_group(db: Session, group: SimilarGroup) -> SimilarGroupOut:

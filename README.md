@@ -1,6 +1,6 @@
-# 青影智筛
+# 青影智筛 V1.2
 
-青影智筛是一款面向校园活动、会议、讲座、志愿活动、团学活动等场景的本地桌面端照片智能初筛与素材管理工具。
+青影智筛 V1.2 是一款面向校园活动、会议、讲座、志愿活动、团学活动等场景的本地桌面端照片智能初筛与素材管理工具。
 
 项目定位是：AI 辅助粗筛、分类、去重和归档，不替代人工审美与最终判断。第三版重点是整理现有功能并交付可双击运行的桌面应用，支持 macOS `.app` 和 Windows portable `.exe` 打包。
 
@@ -138,8 +138,8 @@ npm run dev:renderer
 - 照片导入：选择本地文件夹、扫描 `jpg/jpeg/png/webp`、生成缩略图
 - 智能初筛：清晰度、曝光、分辨率、构图、综合评分、问题标签
 - 相似聚类：感知哈希分组、组内推荐图、批量处理相似照片
-- 人工复核：保留、备选、淘汰、待确认、推荐用途、分类、备注、大图预览
-- 分类导出：保留、备选、淘汰、推荐宣传图、全部范围复制，生成 `筛选报告.xlsx`
+- 人工复核：已入选、备选、已淘汰、待人工复核、推荐用途、分类、备注、大图预览
+- 分类导出：已入选、备选、已淘汰、推荐宣传图、全部范围复制，生成 `筛选报告.xlsx`
 - 本地配置：阈值、默认目录、后端端口、大模型配置
 - 大模型预留：`/api/ai/analyze-image` 支持 mock 和 Provider 扩展
 
@@ -182,7 +182,7 @@ sh scripts/package-mac.sh
 输出路径：
 
 ```text
-release/mac-arm64/青影智筛.app
+release/mac-arm64/青影智筛 V1.2.app
 ```
 
 如需制作可拖拽安装的 DMG 镜像：
@@ -194,7 +194,7 @@ npm run dmg
 输出路径：
 
 ```text
-release/青影智筛.dmg
+release/青影智筛 V1.2.dmg
 ```
 
 详细说明见 [docs/macos-dmg.md](docs/macos-dmg.md)。
@@ -220,7 +220,7 @@ scripts\package-win.bat
 
 ```text
 resources\backend\win\qingying-backend-runtime\qingying-backend-runtime.exe
-release\青影智筛-0.3.0-win-x64.exe
+release\青影智筛 V1.2-win-x64.exe
 ```
 
 如需只构建后端：
@@ -234,14 +234,14 @@ scripts\build-backend-win.bat
 macOS：
 
 ```bash
-open release/mac-arm64/青影智筛.app
+open "release/mac-arm64/青影智筛 V1.2.app"
 ```
 
 也可以检查资源是否已打入应用：
 
 ```bash
-ls release/mac-arm64/青影智筛.app/Contents/Resources/backend
-npx asar list release/mac-arm64/青影智筛.app/Contents/Resources/app.asar
+ls "release/mac-arm64/青影智筛 V1.2.app/Contents/Resources/backend"
+npx asar list "release/mac-arm64/青影智筛 V1.2.app/Contents/Resources/app.asar"
 ```
 
 后端可执行文件单独验证：

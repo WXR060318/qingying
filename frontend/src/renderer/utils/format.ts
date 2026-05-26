@@ -61,10 +61,10 @@ export function formatResolution(width?: number | null, height?: number | null):
 
 export function statusLabel(status: PhotoStatus): string {
   const labels: Record<PhotoStatus, string> = {
-    keep: "保留",
+    keep: "已入选",
     candidate: "备选",
-    reject: "淘汰",
-    pending: "待确认",
+    reject: "已淘汰",
+    pending: "待人工复核",
   };
   return labels[status];
 }

@@ -21,7 +21,12 @@ from app.schemas import (
     ScanRequest,
     ScanResult,
 )
-from app.services.image_quality_service import create_thumbnail, encode_tags, read_basic_metadata
+from app.services.image_quality_service import (
+    create_thumbnail,
+    encode_tags,
+    read_basic_metadata,
+    thumbnail_cache_path,
+)
 from app.services.task_status import set_task_status
 
 
@@ -168,8 +173,12 @@ def scan_project_photos(
                 db.flush()
                 imported_count += 1
                 existing[resolved_path] = photo.id
-            thumbnail_path = STORAGE_DIR / "thumbnails" / str(project_id) / f"{photo.id}.jpg"
-            photo.thumbnail_path = create_thumbnail(resolved_path, thumbnail_path)
+            thumbnail_path = thumbnail_cache_path(STORAGE_DIR, project_id, photo.id, resolved_path)
+            photo.thumbnail_path = create_thumbnail(
+                resolved_path,
+                thumbnail_path,
+                force=photo.thumbnail_path != str(thumbnail_path),
+            )
         except Exception as exc:
             failed_count += 1
             errors.append(f"{path.name}: {exc}")

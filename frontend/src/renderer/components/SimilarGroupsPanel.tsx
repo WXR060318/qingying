@@ -44,7 +44,7 @@ export function SimilarGroupsPanel({
               onClick={() => onApplyRecommendation(group.id)}
             >
               <Check size={16} />
-              保留推荐图
+              入选推荐图
             </button>
           </div>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-3">
@@ -60,7 +60,7 @@ export function SimilarGroupsPanel({
                 <div className="relative aspect-[4/3] bg-slate-100">
                   <img
                     className="h-full w-full object-cover"
-                    src={api.thumbnailUrl(photo.id)}
+                    src={api.thumbnailUrl(photo)}
                     alt={photo.file_name}
                   />
                   {is_recommended && (

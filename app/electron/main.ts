@@ -10,8 +10,11 @@ import {
 let mainWindow: BrowserWindow | null = null;
 
 const isDev = !app.isPackaged;
+const APP_DISPLAY_NAME = "青影智筛 V1.2";
+const APP_DATA_NAME = "青影智筛";
 
-app.setName("青影智筛");
+app.setName(APP_DISPLAY_NAME);
+app.setPath("userData", path.join(app.getPath("appData"), APP_DATA_NAME));
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -19,7 +22,7 @@ function createWindow(): void {
     height: 800,
     minWidth: 1080,
     minHeight: 680,
-    title: "青影智筛",
+    title: APP_DISPLAY_NAME,
     backgroundColor: "#f1f5f9",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),

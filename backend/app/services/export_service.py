@@ -14,13 +14,13 @@ from app.services.task_status import set_task_status
 
 
 STATUS_DIRS = {
-    "keep": "01_保留照片",
-    "candidate": "02_备选照片",
-    "reject": "03_淘汰照片",
-    "pending": "04_待确认照片",
+    "keep": "已入选",
+    "candidate": "备选",
+    "reject": "已淘汰",
+    "pending": "待人工复核",
 }
 
-DEFAULT_CATEGORY = "待人工确认"
+DEFAULT_CATEGORY = "未分类"
 
 REPORT_FIELDS = [
     "项目名称",
@@ -92,7 +92,7 @@ def export_project_assets(
                 progress=round(index / max(len(selected_photos), 1), 3),
                 message=f"正在导出照片 {index}/{len(selected_photos)}",
             )
-        status = photo.status if photo.status in STATUS_DIRS else "pending"
+        status = _normalized_status(photo.status)
         counts[status] += 1
         category = _sanitize_path_part(photo.user_category or photo.ai_category or DEFAULT_CATEGORY)
         target_dir = root / STATUS_DIRS[status] / category
@@ -132,7 +132,7 @@ def export_project_assets(
                 "AI 分类": photo.ai_category,
                 "人工分类": photo.user_category,
                 "推荐用途": photo.recommended_usage,
-                "当前状态": _status_label(photo.status),
+                "当前状态": _status_label(status),
                 "问题标签": "、".join(decode_tags(photo.issue_tags)),
                 "相似组编号": recommended_by_photo.get(photo.id, {}).get("group_id"),
                 "是否相似组推荐图": "是"
@@ -179,15 +179,16 @@ def export_project_assets(
 
 
 def _in_export_range(photo: Photo, export_range: str) -> bool:
+    status = _normalized_status(photo.status)
     if export_range == "keep_only":
-        return photo.status == "keep"
+        return status == "keep"
     if export_range == "reject_only":
-        return photo.status == "reject"
+        return status == "reject"
     if export_range == "recommended_only":
         return photo.recommended_usage == "推文封面候选"
     if export_range == "all":
         return True
-    return photo.status in {"keep", "candidate"}
+    return status in {"keep", "candidate"}
 
 
 def _unique_target(target: Path) -> Path:
@@ -210,11 +211,33 @@ def _sanitize_path_part(value: str) -> str:
 
 def _status_label(status: str) -> str:
     return {
-        "keep": "保留",
+        "keep": "已入选",
         "candidate": "备选",
-        "reject": "淘汰",
-        "pending": "待确认",
+        "reject": "已淘汰",
+        "pending": "待人工复核",
     }.get(status, status)
+
+
+def _normalized_status(status: str | None) -> str:
+    return {
+        "keep": "keep",
+        "accepted": "keep",
+        "selected": "keep",
+        "已入选": "keep",
+        "保留": "keep",
+        "candidate": "candidate",
+        "备选": "candidate",
+        "reject": "reject",
+        "rejected": "reject",
+        "已淘汰": "reject",
+        "淘汰": "reject",
+        "pending": "pending",
+        "review": "pending",
+        "pending_review": "pending",
+        "待人工复核": "pending",
+        "待确认": "pending",
+        "待人工确认": "pending",
+    }.get(status or "", "pending")
 
 
 def _recommended_group_lookup(db: Session, project_id: int) -> dict[int, dict[str, Any]]:

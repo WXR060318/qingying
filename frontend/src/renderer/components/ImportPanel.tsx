@@ -58,7 +58,7 @@ export function ImportPanel({
           {photos.slice(0, 48).map((photo) => (
             <div key={photo.id} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
               <div className="aspect-[4/3] bg-slate-100">
-                <img className="h-full w-full object-cover" src={api.thumbnailUrl(photo.id)} alt={photo.file_name} />
+                <img className="h-full w-full object-cover" src={api.thumbnailUrl(photo)} alt={photo.file_name} />
               </div>
               <div className="truncate px-3 py-2 text-xs font-medium text-slate-700" title={photo.file_name}>
                 {photo.file_name}

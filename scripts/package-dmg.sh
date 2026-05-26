@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-APP_PATH="$ROOT_DIR/release/mac-arm64/青影智筛.app"
+APP_PATH="$ROOT_DIR/release/mac-arm64/青影智筛 V1.2.app"
 
 cd "$ROOT_DIR"
 

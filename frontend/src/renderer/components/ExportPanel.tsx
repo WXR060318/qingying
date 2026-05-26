@@ -51,9 +51,9 @@ export function ExportPanel({ project, busy, lastResult, onExport }: ExportPanel
         <label className="block">
           <span className="mb-1.5 block text-xs font-medium text-slate-600">导出范围</span>
           <select className="input" value={exportRange} onChange={(event) => setExportRange(event.target.value as ExportRange)}>
-            <option value="keep_only">仅保留照片</option>
-            <option value="keep_candidate">保留 + 备选照片</option>
-            <option value="reject_only">仅淘汰照片</option>
+            <option value="keep_only">仅已入选照片</option>
+            <option value="keep_candidate">已入选 + 备选照片</option>
+            <option value="reject_only">仅已淘汰照片</option>
             <option value="recommended_only">仅推荐宣传图</option>
             <option value="all">全部照片</option>
           </select>
@@ -84,9 +84,9 @@ export function ExportPanel({ project, busy, lastResult, onExport }: ExportPanel
           <div className="mt-2 break-all">目录：{lastResult.export_dir}</div>
           {lastResult.report_path && <div className="mt-1 break-all">报告：{lastResult.report_path}</div>}
           <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-500">
-            <span>保留 {lastResult.keep_count}</span>
+            <span>已入选 {lastResult.keep_count}</span>
             <span>备选 {lastResult.candidate_count}</span>
-            <span>淘汰 {lastResult.reject_count}</span>
+            <span>已淘汰 {lastResult.reject_count}</span>
             <span>复制 {lastResult.copied_count}</span>
             <span>缺失 {lastResult.skipped_missing_count}</span>
           </div>

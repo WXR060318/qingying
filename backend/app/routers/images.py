@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import STORAGE_DIR, get_db
 from app.models import Photo, Project
 from app.routers.common import get_photo_or_404, ok, serialize_photo
 from app.routers.projects import scan_project_photos
@@ -17,9 +17,11 @@ from app.schemas import (
     ReviewUpdateRequest,
     ScanRequest,
 )
+from app.services.image_quality_service import create_thumbnail, thumbnail_cache_path
 
 
 photos_router = APIRouter(prefix="/api/photos", tags=["photos"])
+project_photos_router = APIRouter(prefix="/api/projects/{project_id}/photos", tags=["photos"])
 images_router = APIRouter(prefix="/api/images", tags=["images"])
 
 
@@ -44,22 +46,69 @@ def update_photo(photo_id: int, payload: PhotoUpdate, db: Session = Depends(get_
 @photos_router.get("/{photo_id}/thumbnail")
 def get_photo_thumbnail(photo_id: int, db: Session = Depends(get_db)) -> FileResponse:
     photo = get_photo_or_404(db, photo_id)
-    preferred = Path(photo.thumbnail_path) if photo.thumbnail_path else Path(photo.file_path)
-    if preferred.exists() and preferred.is_file():
-        return FileResponse(preferred)
+    return _thumbnail_response(photo, db)
+
+
+@project_photos_router.get("/{photo_id}/thumbnail")
+def get_project_photo_thumbnail(
+    project_id: int,
+    photo_id: int,
+    db: Session = Depends(get_db),
+) -> FileResponse:
+    photo = get_photo_or_404(db, photo_id)
+    if photo.project_id != project_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="缩略图不存在")
+    return _thumbnail_response(photo, db)
+
+
+@project_photos_router.get("/{photo_id}/file")
+def get_project_photo_file(
+    project_id: int,
+    photo_id: int,
+    db: Session = Depends(get_db),
+) -> FileResponse:
+    photo = get_photo_or_404(db, photo_id)
+    if photo.project_id != project_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="原始图片不存在")
+    return _file_response(Path(photo.file_path))
+
+
+def _thumbnail_response(photo: Photo, db: Session) -> FileResponse:
     original = Path(photo.file_path)
     if original.exists() and original.is_file():
-        return FileResponse(original)
+        expected_thumbnail = thumbnail_cache_path(
+            STORAGE_DIR,
+            photo.project_id,
+            photo.id,
+            photo.file_path,
+        )
+        thumbnail_path = create_thumbnail(photo.file_path, expected_thumbnail)
+        if thumbnail_path:
+            if photo.thumbnail_path != thumbnail_path:
+                photo.thumbnail_path = thumbnail_path
+                photo.updated_at = datetime.utcnow()
+                db.commit()
+            return _file_response(Path(thumbnail_path))
+        return _file_response(original)
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="缩略图不存在")
 
 
 @photos_router.get("/{photo_id}/file")
 def get_photo_file(photo_id: int, db: Session = Depends(get_db)) -> FileResponse:
     photo = get_photo_or_404(db, photo_id)
-    original = Path(photo.file_path)
-    if original.exists() and original.is_file():
-        return FileResponse(original)
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="原始图片不存在")
+    return _file_response(Path(photo.file_path))
+
+
+def _file_response(path: Path) -> FileResponse:
+    if path.exists() and path.is_file():
+        return FileResponse(
+            path,
+            headers={
+                "Cache-Control": "no-store, max-age=0",
+                "Pragma": "no-cache",
+            },
+        )
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文件不存在")
 
 
 @images_router.get("/{photo_id}")

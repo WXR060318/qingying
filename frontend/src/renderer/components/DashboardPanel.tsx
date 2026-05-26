@@ -51,8 +51,8 @@ export function DashboardPanel({
         <div className="grid grid-cols-4 gap-4">
           <Stat label="已导入" value={photos.length} />
           <Stat label="已分析" value={analyzedCount} />
-          <Stat label="保留" value={keepCount} />
-          <Stat label="淘汰" value={rejectCount} />
+          <Stat label="已入选" value={keepCount} />
+          <Stat label="已淘汰" value={rejectCount} />
         </div>
 
         <div className="mt-6 grid grid-cols-4 gap-4">

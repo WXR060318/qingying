@@ -1,5 +1,5 @@
 appId: com.qingying.zhishai.app
-productName: 青影智筛
+productName: 青影智筛 V1.2
 copyright: Copyright © 2026 Qingying Smart Screen
 
 directories:
@@ -35,8 +35,8 @@ mac:
         - "**/*"
 
 dmg:
-  artifactName: "青影智筛.dmg"
-  title: "青影智筛"
+  artifactName: "青影智筛 V1.2.dmg"
+  title: "青影智筛 V1.2"
   contents:
     - x: 150
       y: 180
@@ -63,4 +63,4 @@ win:
         - "**/*"
 
 portable:
-  artifactName: "${productName}-${version}-win-${arch}.${ext}"
+  artifactName: "青影智筛 V1.2-win-${arch}.${ext}"

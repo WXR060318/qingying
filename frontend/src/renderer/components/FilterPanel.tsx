@@ -45,10 +45,10 @@ export function FilterPanel({
 
       <SelectBlock label="状态" value={status} onChange={(value) => onStatusChange(value as FilterMode)}>
         <option value="all">全部</option>
-        <option value="keep">保留</option>
+        <option value="keep">已入选</option>
         <option value="candidate">备选</option>
-        <option value="reject">淘汰</option>
-        <option value="pending">待确认</option>
+        <option value="reject">已淘汰</option>
+        <option value="pending">待人工复核</option>
       </SelectBlock>
 
       <SelectBlock label="分类" value={category} onChange={onCategoryChange}>

@@ -65,7 +65,7 @@ export function PreviewModal({
       <div className="flex min-w-0 flex-1 items-center justify-center p-12">
         <img
           className="max-h-full max-w-full object-contain"
-          src={api.photoFileUrl(photo.id)}
+          src={api.photoFileUrl(photo)}
           alt={photo.file_name}
         />
       </div>

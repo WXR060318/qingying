@@ -11,7 +11,7 @@ from app.services.settings_service import ensure_settings_file
 
 setup_logging()
 
-app = FastAPI(title="青影智筛 API", version="0.1.0")
+app = FastAPI(title="青影智筛 API", version="1.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -82,6 +82,7 @@ def api_health_check():
 
 app.include_router(projects.router)
 app.include_router(images.photos_router)
+app.include_router(images.project_photos_router)
 app.include_router(images.images_router)
 app.include_router(analysis.router)
 app.include_router(analysis.ai_router)
